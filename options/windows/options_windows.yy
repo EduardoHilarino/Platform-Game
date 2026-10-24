@@ -1,4 +1,4 @@
-{//Test
+{
   "$GMWindowsOptions":"v2",
   "%Name":"Windows",
   "name":"Windows",

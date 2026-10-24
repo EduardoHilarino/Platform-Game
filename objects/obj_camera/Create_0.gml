@@ -17,4 +17,3 @@
 	down_clamp = false;
 	up_clamp = false;
 	
-	//Test

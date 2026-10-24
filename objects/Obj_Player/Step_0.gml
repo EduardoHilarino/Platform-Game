@@ -3,14 +3,17 @@
 	var previous_x = x;
 
 	// ** 1. Player Input **
-	
+
 	var move = keyboard_check(ord("D"))
 	         - keyboard_check(ord("A"));
 
-	var jump_pressed = keyboard_check_pressed(vk_space);
-	var jump_held = keyboard_check(vk_space);
+	var jump_pressed = keyboard_check_pressed(ord("W"));
+	var jump_held = keyboard_check(ord("W"));
+	
+	var dash = keyboard_check_pressed(vk_shift);
 
-
+	if (jump_pressed) audio_play_sound(Snd_jump, 0 ,0, 0.1, 0, random_range(0.5, 2));
+	
 	// ** 3. Verify Ground **
 
 	grounded = place_meeting(x, y + 1, Obj_Solid);
@@ -23,39 +26,195 @@
 		    coyote_timer = max(0, coyote_timer - 1);
 		}
 
+	// Reset Dash
+	if (grounded && state != PlayerState.DASH) {
+	    dash_available = true;
+	}
 
-	// =====================================
+	// Start Dash
+	if (dash && dash_available && !grounded && state != PlayerState.DEATH) {
+	    dash_available = false;
+	    Scr_Player_ChangeState(PlayerState.DASH);
+	}
+
+	// ** 4. Jump Buffer **
+
+	if (jump_pressed) {
+	    jump_buffer = buffer_frames;
+	}
+	else {
+	    jump_buffer = max(0, jump_buffer - 1);
+	}
+
+
 	// DETECÇÃO DE VIRADA COM MEMÓRIA
-	// =====================================
 
-	 // Guardar a direção anterior
-	 // por alguns frames após soltar a tecla
-	 if (move == 0) {
-	     turn_grace_timer = max(0, turn_grace_timer - 1);
-	 }
-	 else if (move == last_move) {
-	     turn_grace_timer = turn_grace_frames;
-	 }
+		 // Guardar a direção anterior
+		 // por alguns frames após soltar a tecla
+		 if (move == 0) {
+		     turn_grace_timer = max(0, turn_grace_timer - 1);
+		 }
+		 else if (move == last_move) {
+		     turn_grace_timer = turn_grace_frames;
+		 }
 
-	 // Detectar uma nova direção contrária
-	 var direction_changed = (move != 0 && last_move != 0 && move != last_move);
+		 // Detectar uma nova direção contrária
+		 var direction_changed = (move != 0 && last_move != 0 && move != last_move);
 
-	 // Verificar se ainda existe impulso
-	 var has_momentum = (move != 0 && abs(hsp) > 0.15 && sign(hsp) != move);
+		 // Verificar se ainda existe impulso
+		 var has_momentum = (move != 0 && abs(hsp) > 0.15 && sign(hsp) != move);
 
-	 // Iniciar virada
-	 if (direction_changed && turn_grace_timer > 0 && has_momentum && grounded && !is_turning) {
-	     is_turning = true;
+		 // Atualizar a direção lembrada
+		 if (move != 0) {
+		     last_move = move;
+		     turn_grace_timer = turn_grace_frames;
+		 }
 
-	     // Guardar a direção anterior
-	     turn_direction = sign(hsp);
-	 }
 
-	 // Atualizar a direção lembrada
-	 if (move != 0) {
-	     last_move = move;
-	     turn_grace_timer = turn_grace_frames;
-	 }
+	// STATE MACHINE
+	
+	switch (state) {
+
+	    case PlayerState.IDLE:
+
+	        if (jump_buffer > 0 && coyote_timer > 0)
+			{vsp = jump_speed; jump_buffer = 0; coyote_timer = 0; Scr_Player_ChangeState(PlayerState.JUMP);}
+			
+	        else if (direction_changed && has_momentum && turn_grace_timer > 0 && grounded)
+			{Scr_Player_ChangeState(PlayerState.TURN);
+				}
+	        else if (!grounded)
+			{ Scr_Player_ChangeState(PlayerState.FALL);}
+			
+	        else if (move != 0 || abs(hsp) > 0.10)
+			{Scr_Player_ChangeState(PlayerState.RUN);}
+			
+			
+	        break;
+
+
+	    case PlayerState.RUN:
+			
+			
+	        if (jump_buffer > 0 && coyote_timer > 0)
+			{vsp = jump_speed; jump_buffer = 0; coyote_timer = 0; Scr_Player_ChangeState(PlayerState.JUMP);}
+			
+	        else if (direction_changed && has_momentum && turn_grace_timer > 0 && grounded) { Scr_Player_ChangeState(PlayerState.TURN);}
+			
+	        else if (!grounded) {Scr_Player_ChangeState(PlayerState.FALL);}
+			
+	        else if (move == 0 && abs(hsp) <= 0.10) {Scr_Player_ChangeState(PlayerState.IDLE);}
+
+	        break;
+			
+			
+	    case PlayerState.TURN:
+
+	        // Mantém a animação até o Animation End
+	        // A física horizontal continua funcionando
+
+	        if (!grounded) {is_turning = false;Scr_Player_ChangeState(PlayerState.FALL);}
+
+	        break;
+
+
+	    case PlayerState.JUMP:
+		
+	        if (vsp >= 0) {Scr_Player_ChangeState(PlayerState.FALL);}
+			
+	        break;
+
+
+		case PlayerState.FALL:
+
+		    if (grounded) {
+
+		        if (jump_buffer > 0)
+				{vsp = jump_speed; jump_buffer = 0; coyote_timer = 0; Scr_Player_ChangeState(PlayerState.JUMP);}
+		       
+				else if (abs(hsp) > 0.10)
+				{Scr_Player_ChangeState(PlayerState.RUN);}
+		       
+				else {Scr_Player_ChangeState(PlayerState.IDLE);}
+		    }
+
+		    break;
+
+					
+		case PlayerState.DASH:
+
+	    // Define dash direction only once
+	    if (!dashed) {
+			
+			
+	        var _left = keyboard_check(ord("A"));
+	        var _right = keyboard_check(ord("D"));
+	        var _down = keyboard_check(ord("S"));
+	        var _up = keyboard_check(ord("W"));
+
+	        var _input_x = _right - _left;
+	        var _input_y = _down - _up;
+
+	        // Use facing direction if no input
+	        if (_input_x == 0 && _input_y == 0) {
+	            _input_x = facing;
+	        }
+
+	        // Normalize diagonal movement
+	        var _length = point_distance(0, 0, _input_x, _input_y);
+			
+	        dash_dir_x = _input_x / _length;
+	        dash_dir_y = _input_y / _length;
+			
+			audio_play_sound(Snd_dash,  0 ,0, 0.1, 0, random_range(0.7, 2))
+			
+	        dashed = true;
+	        tempo_dash = dash_duration;
+	    }
+
+	    // Apply dash velocity
+	    hsp = dash_dir_x * vel_dash;
+	    vsp = dash_dir_y * vel_dash;
+
+	    tempo_dash--;
+		
+		if(tempo_dash % 2 == 0)
+		{
+		var _rast = instance_create_depth(x, y, depth + 1, Obj_rastro)
+
+		instance_create_layer(x, y, "Entitys", Obj_shake);
+
+		_rast.image_xscale = image_xscale
+		_rast.sprite_index = sprite_index
+		_rast.image_index = image_index;
+		_rast.image_speed = 0;
+		}
+		
+	    if (tempo_dash <= 0) {
+		
+	        dashed = false;
+
+	        if (!grounded) {
+	            Scr_Player_ChangeState(PlayerState.FALL);
+	        }
+	        else if (abs(hsp) > 0.10) {
+	            Scr_Player_ChangeState(PlayerState.RUN);
+	        }
+	        else {
+	            Scr_Player_ChangeState(PlayerState.IDLE);
+	        }
+	    }
+		
+		
+
+	    break;
+			
+	    case PlayerState.DEATH:
+
+	        // Sem movimentação enquanto a animação termina
+	        exit;
+
+	}
 
 
 	// ** 2. Horizontal Moviment **
@@ -79,27 +238,9 @@
 		}
 
 
-	// ** 4. Jump Buffer **
-	
-	if (jump_pressed) {
-	    jump_buffer = buffer_frames;
-	}
-	else {
-	    jump_buffer = max(0, jump_buffer - 1);
-	}
-
-
 	// ** 5. Executes Jump **
 
-	if (jump_buffer > 0 && coyote_timer > 0) {
-
-	    vsp = jump_speed;
-
-	    jump_buffer = 0;
-	    coyote_timer = 0;
-
-	    grounded = false;
-	}
+	// The jump is now done by the state machine
 
 
 	// ** 6. Dynamic Gravity **
@@ -181,36 +322,23 @@
 		    }
 		}
 
-
+		// Update Ground After Collisions
+		grounded = place_meeting(x, y + 1, Obj_Solid);
+		
 	// ** 9. Updates Animations **
 
-		// Verificar se existe uma parede na direção atual
+		// Verify if there is a wall on front
 		var blocked = false;
 
 		if (abs(hsp) > 0.01) {
 		    blocked = place_meeting(x + sign(hsp), y, Obj_Solid);
 		}
 
-		// Verificar velocidade horizontal real
+		// Verify real horizontal speed
 		var is_moving = (abs(hsp) > 0.10) && !blocked;
 
-		// Escolher animação
-		var new_sprite = Spr_player_Idle;
-
-		if (is_turning) {
-		    new_sprite = Spr_Player_turn;
-		}
-		else if (is_moving) {
-		    new_sprite = Spr_Player_run;
-		}
-
-		// Trocar sprite somente quando necessário
-		if (sprite_index != new_sprite) {
-		    sprite_index = new_sprite;
-		    image_index = 0;
-		}
-
-		if (is_turning) {
+		// Updates visual direction
+		if (state == PlayerState.TURN) {
 		    facing = turn_direction;
 		}
 		else if (move != 0) {
