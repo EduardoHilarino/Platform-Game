@@ -20,7 +20,7 @@
   "spriteId":{
     "name":"Sprite11",
     "path":"sprites/Sprite11/Sprite11.yy",
-  },
+  },//Test
   "spriteNoExport":false,
   "textureGroupId":{
     "name":"Default",
