@@ -7,7 +7,8 @@ function Scr_Player_States(){
     JUMP,
     FALL,
     DEATH,
-	DASH
+	DASH,
+	WIN
 	}
 	
 }

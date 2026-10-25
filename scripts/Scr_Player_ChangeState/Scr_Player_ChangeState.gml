@@ -1,5 +1,10 @@
 function Scr_Player_ChangeState(_new_state) {
-
+	
+	// ** Exit Previous State **
+	if (state == PlayerState.TURN) {
+	    is_turning = false;
+	}
+	
     if (state == _new_state) {
         return;
     }
@@ -25,11 +30,11 @@ function Scr_Player_ChangeState(_new_state) {
             break;
 
         case PlayerState.JUMP:
-            // Mantém o sprite atual até adicionar animação de pulo
+            sprite_index = Spr_Player_Jump;
             break;
 
         case PlayerState.FALL:
-            // Mantém o sprite atual até adicionar animação de queda
+            sprite_index = Spr_Player_fall;
             break;
 
         case PlayerState.DEATH:
@@ -48,7 +53,24 @@ function Scr_Player_ChangeState(_new_state) {
 		
 		case PlayerState.DASH:
 			
-			sprite_index = Spr_Player_Dash
+			dashed = false;
+			tempo_dash = dash_duration;
+	
+			sprite_index = Spr_Player_Dash;
+			break;
+			
+		case PlayerState.WIN:
+			
+			win = true;
+			
+			hsp = 0;
+            vsp = 0;
+
+            x_remainder = 0;
+            y_remainder = 0;
+			
+			sprite_index = Spr_Player_win;
+			
 			break;
     }
 

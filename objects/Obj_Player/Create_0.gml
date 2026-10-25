@@ -5,7 +5,7 @@
 
 	dashed = false;
 
-// Dash Control
+// ** Dash Control **
 	dash_available = true;
 	dash_dir_x = 0;
 	dash_dir_y = 0;
@@ -76,4 +76,8 @@
 	if (!instance_exists(obj_player_pixel))
 	{
 		instance_create_layer(x, y, "Camera", obj_player_pixel);
+	
 	}
+	
+// ** Win **
+	win = false;

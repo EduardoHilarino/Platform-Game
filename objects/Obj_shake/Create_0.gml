@@ -1,4 +1,4 @@
 // ** Camera Shake **
-shake = 1.2;
+shake = 5;
 
 cam = view_camera[0];

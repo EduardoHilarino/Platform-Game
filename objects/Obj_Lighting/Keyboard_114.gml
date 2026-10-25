@@ -1,0 +1,1 @@
+lighting_enabled = !lighting_enabled;
